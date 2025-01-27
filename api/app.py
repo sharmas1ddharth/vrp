@@ -676,27 +676,22 @@ def update_location_matrix(location: Location, new_location: Location) -> None:
     location.driving_time_seconds_map[new_location] = 1653
     new_location.driving_distance_meters_map[location] = 21543
     new_location.driving_time_seconds_map[location] = 1652
-    # print(location)
 
-class AddCustomer(ProblemChange[Solution]):
+class AddCustomer(ProblemChange[VehicleRoutePlan]):
     customer: Customer
     def __init__(self, customer: Customer):
         self.customer = customer
 
-    def do_change(self, working_solution: Solution, problem_change_director: ProblemChangeDirector) -> None:
+    def do_change(self, working_solution: VehicleRoutePlan, problem_change_director: ProblemChangeDirector) -> None:
         problem_change_director.add_entity(self.customer, lambda working_entity: working_solution.customers.append(working_entity))
-        print("a")
         for customer in working_solution.customers:
-            print("b")
-            print(customer.location)
-            problem_change_director.change_problem_property(customer.location,
-                lambda working_location: update_location_matrix(working_location, self.customer.location))
+            problem_change_director.change_problem_property(customer,
+                lambda working_location: update_location_matrix(working_location.location, self.customer.location))
             for vehicle in working_solution.vehicles:
-                problem_change_director.change_problem_property(vehicle.depot,
-                    lambda working_depot: update_location_matrix(vehicle.depot, self.customer))
-            print("c")
-        problem_change_director.add_problem_fact(self.customer.location, lambda new_location: working_solution.customers.append(self.customer.location))
-        print("d")
+                problem_change_director.change_problem_property(vehicle,
+                    lambda working_depot: update_location_matrix(working_depot.depot.location, self.customer.location))
+        problem_change_director.add_problem_fact(self.customer.location, lambda new_location: working_solution.customers.append(self.customer))
+
 
 @app.post("/route-plans", response_class=PlainTextResponse)
 async def solve_route(
@@ -727,14 +722,13 @@ async def solve_route(
     print(solver.is_solving(), "status")
     print(solution.json())
     update_route(solver_id, solution)
-    # logfire.info(route.json(), response="RESPONSE")
-    # import datetime
-    # cust = Customer(id=100,
-    #     location=Location(latitude=12.9716, longitude=77.5946, id="6"),
-    #     ready_time=datetime.datetime(2022, 1, 1, 0, 0, tzinfo=datetime.timezone.utc), due_time=datetime.datetime(2022, 1, 1, 20, 0, tzinfo=datetime.timezone.utc),
-    #     service_duration=timedelta(seconds=600), demand=1, vehicle=None, previous_customer=None, next_customer=None, arrival_time=None)
-    # solver_manager.add_problem_change(solver_id, AddCustomer(cust))
-    # print(solver_id)
+    import datetime
+    cust = Customer(id=100,
+        location=Location(latitude=12.9716, longitude=77.5946, id="6"),
+        ready_time=datetime.datetime(2022, 1, 1, 0, 0, tzinfo=datetime.timezone.utc), due_time=datetime.datetime(2022, 1, 1, 20, 0, tzinfo=datetime.timezone.utc),
+        service_duration=timedelta(seconds=600), demand=1, vehicle=None, previous_customer=None, next_customer=None, arrival_time=None)
+    solver_manager.add_problem_change(solver_id, AddCustomer(cust))
+    return solver_id
     return solver_id
 
 
